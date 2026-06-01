@@ -36,6 +36,14 @@ export default async function handler(req, res) {
 
     res.status(200).json({ success: true, titulo });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    // Isso fará o erro completo aparecer no painel de Logs da Vercel
+    console.error("ERRO DO ROBÔ:", error); 
+    
+    // Isso nos dará mais detalhes no teste do cron-job.org
+    res.status(500).json({ 
+      error: error.message, 
+      stack: error.stack,
+      detalhe: "O erro ocorreu durante a execução do robô" 
+    });
   }
 }
