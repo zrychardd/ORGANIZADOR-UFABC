@@ -12,13 +12,24 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 2. Extração via Proxy
+    // 2. Extração via Proxy Direto
     const urlParaBuscar = "https://www.ufabc.edu.br/noticias";
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(urlParaBuscar)}`;
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(urlParaBuscar)}`;
 
-    const response = await fetch(proxyUrl);
-    const jsonResposta = await response.json(); // Variável renomeada
-    const html = jsonResposta.contents;
+    const response = await fetch(proxyUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      }
+    });
+
+    // Trava de segurança: Se o proxy der erro, ele nos avisa o motivo exato
+    if (!response.ok) {
+      const erroTexto = await response.text();
+      throw new Error(`Falha no proxy (${response.status}): ${erroTexto.substring(0, 100)}`);
+    }
+
+    // Agora recebemos o HTML direto, sem precisar de JSON
+    const html = await response.text();
     const $ = cheerio.load(html);
 
     const primeiraNoticia = $('.tile-item').first();
@@ -33,7 +44,7 @@ export default async function handler(req, res) {
     const resumo = result.response.text();
 
     // 4. Banco: Salva no Supabase
-    // Variável renomeada para 'supabaseData' para evitar conflito com a de cima
+    // Variável renomeada para 'supabaseData' para evitar conflito
     const { data: supabaseData, error } = await supabase
       .from('noticias_ufabc')
       .insert([{ titulo, resumo, imagem_url: imagem, link_original: link }]);
