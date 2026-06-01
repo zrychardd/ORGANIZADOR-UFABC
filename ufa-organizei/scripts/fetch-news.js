@@ -1,7 +1,12 @@
 import Parser from "rss-parser";
 import { createClient } from "@supabase/supabase-js";
 
-const parser = new Parser();
+const parser = new Parser({
+  timeout: 15000,
+  headers: {
+    "User-Agent": "Mozilla/5.0 UFA-ORGANIZEI-NewsBot",
+  },
+});
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -9,19 +14,30 @@ const supabase = createClient(
 );
 
 const FEEDS = [
-  "https://www.ufabc.edu.br/noticias?format=feed&type=rss"
+  "https://www.ufabc.edu.br/noticias?format=feed&type=rss",
 ];
 
 function cleanText(text = "") {
-  return text
-    .replace(/<[^>]*>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  return text.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+}
+
+async function parseFeedWithRetry(url, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await parser.parseURL(url);
+    } catch (error) {
+      console.log(`Tentativa ${attempt} falhou: ${error.message}`);
+
+      if (attempt === retries) throw error;
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+  }
 }
 
 async function main() {
   for (const feedUrl of FEEDS) {
-    const feed = await parser.parseURL(feedUrl);
+    const feed = await parseFeedWithRetry(feedUrl);
 
     for (const item of feed.items.slice(0, 10)) {
       const title = item.title || "Sem título";
@@ -31,19 +47,21 @@ async function main() {
 
       if (!url) continue;
 
-      await supabase
-        .from("news")
-        .upsert(
-          {
-            title,
-            summary,
-            url,
-            source: "UFABC",
-            category: "Notícia",
-            published_at
-          },
-          { onConflict: "url" }
-        );
+      const { error } = await supabase.from("news").upsert(
+        {
+          title,
+          summary,
+          url,
+          source: "UFABC",
+          category: "Notícia",
+          published_at,
+        },
+        { onConflict: "url" }
+      );
+
+      if (error) {
+        console.error("Erro ao salvar notícia:", error.message);
+      }
     }
   }
 
@@ -51,6 +69,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error);
+  console.error("Erro final:", error.message);
   process.exit(1);
 });
