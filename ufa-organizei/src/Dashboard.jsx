@@ -146,6 +146,10 @@ export default function Dashboard({ session, isDark, toggleDark }) {
   const [postCommentsMap, setPostCommentsMap] = useState({})
   const [commentInputs, setCommentInputs] = useState({})
 
+  // Estados das Notícias
+  const [news, setNews] = useState([])
+  const [newsLoading, setNewsLoading] = useState(false)
+
   // Estados dos insights do Dashboard
   const [studyStreak, setStudyStreak] = useState({ current_streak: 0, longest_streak: 0 })
   const [weeklyGoal, setWeeklyGoal] = useState({ target_tasks: 7, completed_tasks: 0 })
@@ -189,6 +193,7 @@ export default function Dashboard({ session, isDark, toggleDark }) {
     fetchTasks()
     fetchPosts()
     fetchEvents()
+    fetchNews()
     fetchDashboardInsights()
 
     const channel = supabase
@@ -196,6 +201,7 @@ export default function Dashboard({ session, isDark, toggleDark }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => { fetchPosts() })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, () => { fetchPosts() })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, () => { fetchPosts(); if (openCommentsPostId) fetchComments(openCommentsPostId) })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'news' }, () => { fetchNews() })
       .subscribe()
 
     return () => supabase.removeChannel(channel)
@@ -633,6 +639,45 @@ export default function Dashboard({ session, isDark, toggleDark }) {
     }
   }
 
+  const fetchNews = async () => {
+    setNewsLoading(true)
+
+    const { data, error } = await supabase
+      .from('news')
+      .select('*')
+      .order('published_at', { ascending: false })
+      .limit(20)
+
+    if (error) {
+      console.error('Erro ao buscar notícias:', error.message)
+      setNews([])
+    } else {
+      setNews(data || [])
+    }
+
+    setNewsLoading(false)
+  }
+
+  const formatNewsDate = (dateString) => {
+    if (!dateString) return 'Data não informada'
+
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    }).format(new Date(dateString)).replace('.', '')
+  }
+
+  const getNewsFallbackImage = (index = 0) => {
+    const gradients = [
+      'from-[#00674F] to-[#003d2e]',
+      'from-[#D3AF37] to-[#8a6b20]',
+      'from-emerald-700 to-emerald-950',
+    ]
+
+    return gradients[index % gradients.length]
+  }
+
   const fetchDashboardInsights = async () => {
     const user = session?.user
     if (!user) return
@@ -892,7 +937,7 @@ export default function Dashboard({ session, isDark, toggleDark }) {
           <button onClick={() => setActiveTab('inicio')} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'inicio' ? 'bg-[#00674F] text-white shadow-sm' : 'text-[#5a6b63] dark:text-gray-300 hover:bg-[#f0f5f2] dark:hover:bg-gray-800'}`}><Home size={16} /><span>Início</span></button>
           <button onClick={() => setActiveTab('tarefas')} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'tarefas' ? 'bg-[#00674F] text-white shadow-sm' : 'text-[#5a6b63] dark:text-gray-300 hover:bg-[#f0f5f2] dark:hover:bg-gray-800'}`}><ListTodo size={16} /><span>Tarefas</span></button>
           <button onClick={() => setActiveTab('agenda')} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'agenda' ? 'bg-[#00674F] text-white shadow-sm' : 'text-[#5a6b63] dark:text-gray-300 hover:bg-[#f0f5f2] dark:hover:bg-gray-800'}`}><Calendar size={16} /><span>Agenda</span></button>
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-gray-300 cursor-not-allowed"><Megaphone size={16} /><span>Avisos</span></div>
+          <button onClick={() => setActiveTab('noticias')} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'noticias' ? 'bg-[#00674F] text-white shadow-sm' : 'text-[#5a6b63] dark:text-gray-300 hover:bg-[#f0f5f2] dark:hover:bg-gray-800'}`}><Megaphone size={16} /><span>Notícias</span></button>
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-gray-300 cursor-not-allowed"><LayoutGrid size={16} /><span>Feed</span></div>
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-gray-300 cursor-not-allowed"><BarChart size={16} /><span>Relatórios</span></div>
           <div className="flex-1" />
@@ -948,7 +993,7 @@ export default function Dashboard({ session, isDark, toggleDark }) {
                     </div>
                     <div className="flex flex-col">
                       <span className="text-2xl font-bold text-[#1a2e26] dark:text-gray-100 leading-none mb-1">2</span>
-                      <span className="text-[13px] font-bold text-[#1a2e26] dark:text-gray-100">Avisos não lidos</span>
+                      <span className="text-[13px] font-bold text-[#1a2e26] dark:text-gray-100">Notícias novas</span>
                       <span className="text-[11px] text-[#8a9e94] dark:text-gray-400 mt-0.5">Fique por dentro</span>
                     </div>
                   </div>
@@ -1133,6 +1178,112 @@ export default function Dashboard({ session, isDark, toggleDark }) {
                   </div>
                 </div>
 
+              </div>
+            )}
+
+
+            {/* ==================== ABA NOTÍCIAS ==================== */}
+            {activeTab === 'noticias' && (
+              <div className="space-y-5 animate-fade-in">
+                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-[#e4e9e6] dark:border-gray-800 p-6 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-11 h-11 rounded-xl bg-[#e8f5ef] flex items-center justify-center shrink-0">
+                        <Megaphone size={22} className="text-[#00674F]" />
+                      </div>
+                      <div>
+                        <h2 className="text-[22px] font-bold text-[#1a2e26] dark:text-gray-100 leading-none mb-1">Notícias</h2>
+                        <p className="text-[12px] text-[#8a9e94] dark:text-gray-400">Acompanhe as atualizações acadêmicas importadas automaticamente.</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={fetchNews}
+                      disabled={newsLoading}
+                      className="px-4 py-2 bg-[#00674F] text-white rounded-xl text-xs font-bold hover:bg-[#005040] transition-colors shadow-sm flex items-center gap-2 disabled:opacity-60"
+                    >
+                      <Megaphone size={14} />
+                      {newsLoading ? 'Atualizando...' : 'Atualizar notícias'}
+                    </button>
+                  </div>
+
+                  {newsLoading && news.length === 0 ? (
+                    <div className="py-16 text-center text-sm text-[#8a9e94] dark:text-gray-400">Carregando notícias...</div>
+                  ) : news.length === 0 ? (
+                    <div className="py-16 text-center">
+                      <div className="w-[72px] h-[72px] mx-auto rounded-full bg-[#e8f5ef] flex items-center justify-center text-[#00674F] mb-4">
+                        <Megaphone size={32} strokeWidth={1.5} />
+                      </div>
+                      <h4 className="text-[14px] font-bold text-[#1a2e26] dark:text-gray-100">Nenhuma notícia encontrada</h4>
+                      <p className="text-[12px] text-[#8a9e94] dark:text-gray-400 mt-1">Execute a automação no GitHub Actions para preencher a tabela news.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Notícia em destaque */}
+                      {news[0] && (
+                        <div className="overflow-hidden rounded-2xl border border-[#D3AF37]/60 bg-gradient-to-br from-white to-[#fffaf0] dark:from-gray-900 dark:to-[#261f0d] shadow-[0_3px_14px_rgba(0,0,0,0.06)] mb-5">
+                          <div className="h-1 bg-gradient-to-r from-[#00674F] to-[#D3AF37]" />
+                          <div className="grid grid-cols-1 md:grid-cols-5">
+                            <div className="md:col-span-2 h-52 md:h-full bg-[#e8f5ef] relative overflow-hidden">
+                              {news[0].image_url ? (
+                                <img src={news[0].image_url} alt={news[0].title} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className={`w-full h-full bg-gradient-to-br ${getNewsFallbackImage(0)} flex items-center justify-center text-white`}>
+                                  <Megaphone size={54} strokeWidth={1.5} />
+                                </div>
+                              )}
+                              <span className="absolute left-4 top-4 bg-[#D3AF37] text-white text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-sm">DESTAQUE</span>
+                            </div>
+                            <div className="md:col-span-3 p-6 flex flex-col justify-center">
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className="text-[10px] font-bold text-[#00674F] bg-[#e8f5ef] px-2.5 py-1 rounded-lg">{news[0].category || 'Notícia'}</span>
+                                <span className="text-[11px] text-[#8a9e94] dark:text-gray-400">{formatNewsDate(news[0].published_at)}</span>
+                              </div>
+                              <h3 className="text-2xl font-bold text-[#1a2e26] dark:text-gray-100 leading-tight mb-3">{news[0].title}</h3>
+                              <p className="text-sm text-[#5a6b63] dark:text-gray-300 line-clamp-3 mb-5">{news[0].summary || 'Resumo não disponível.'}</p>
+                              <button onClick={() => window.open(news[0].url, '_blank')} className="self-start bg-[#00674F] text-white rounded-xl px-5 py-2.5 text-xs font-bold hover:bg-[#005040] transition-colors shadow-sm flex items-center gap-2">
+                                Ler notícia completa
+                                <ChevronDown size={14} className="-rotate-90" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Lista de notícias */}
+                      <div className="space-y-3">
+                        {news.slice(1).map((item, index) => (
+                          <div key={item.id || item.url} className="bg-[#fafcfb] dark:bg-gray-800 border border-[#e8ede9] dark:border-gray-800 rounded-2xl p-4 flex flex-col md:flex-row gap-4 hover:shadow-md transition-shadow">
+                            <div className="w-full md:w-36 h-28 rounded-xl overflow-hidden bg-[#e8f5ef] shrink-0">
+                              {item.image_url ? (
+                                <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className={`w-full h-full bg-gradient-to-br ${getNewsFallbackImage(index + 1)} flex items-center justify-center text-white`}>
+                                  <Megaphone size={28} strokeWidth={1.6} />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2 mb-2">
+                                <span className="text-[10px] font-bold text-[#00674F] bg-[#e8f5ef] px-2 py-1 rounded-lg">{item.category || 'Notícia'}</span>
+                                <span className="text-[11px] text-[#8a9e94] dark:text-gray-400">{formatNewsDate(item.published_at)}</span>
+                                <span className="text-[11px] text-[#8a9e94] dark:text-gray-400">Fonte: {item.source || 'UFABC'}</span>
+                              </div>
+                              <h4 className="text-[15px] font-bold text-[#1a2e26] dark:text-gray-100 line-clamp-2">{item.title}</h4>
+                              <p className="text-[12px] text-[#5a6b63] dark:text-gray-400 mt-1 line-clamp-2">{item.summary || 'Resumo não disponível.'}</p>
+                            </div>
+                            <div className="flex md:items-center">
+                              <button onClick={() => window.open(item.url, '_blank')} className="px-4 py-2 rounded-xl text-xs font-bold text-[#00674F] bg-[#e8f5ef] hover:bg-[#d9eee6] transition-colors flex items-center gap-2">
+                                Ler mais
+                                <ChevronDown size={14} className="-rotate-90" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             )}
 
