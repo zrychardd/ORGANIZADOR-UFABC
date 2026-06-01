@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     const imagem = primeiraNoticia.find('img').attr('src');
 
     // 3. IA: Pede o resumo para o Gemini
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     const prompt = `Resuma esta notícia em 2 frases curtas: ${titulo}`;
     const result = await model.generateContent(prompt);
     const resumo = result.response.text();
