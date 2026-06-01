@@ -8,9 +8,6 @@ import {
   X, ArrowDown, Minus, ArrowUp, BookOpen, User, Briefcase, Moon, Sun
 } from 'lucide-react'
 
-const [materials, setMaterials] = useState([])
-
-const [materialsLoading, setMaterialsLoading] = useState(false)
 
 const pad2 = (value) => String(value).padStart(2, '0')
 
@@ -153,6 +150,10 @@ export default function Dashboard({ session, isDark, toggleDark }) {
   // Estados das Notícias
   const [news, setNews] = useState([])
   const [newsLoading, setNewsLoading] = useState(false)
+
+  // Estados dos Materiais
+  const [materials, setMaterials] = useState([])
+  const [materialsLoading, setMaterialsLoading] = useState(false)
 
   // Estados dos insights do Dashboard
   const [studyStreak, setStudyStreak] = useState({ current_streak: 0, longest_streak: 0 })
