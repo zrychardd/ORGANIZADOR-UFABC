@@ -9,6 +9,10 @@ jobs:
   fetch-news:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: ufa-organizei
+
     steps:
       - name: Baixar repositório
         uses: actions/checkout@v4
