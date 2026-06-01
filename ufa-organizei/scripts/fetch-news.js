@@ -21,6 +21,24 @@ function cleanText(text = "") {
   return text.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
 }
 
+function extractImage(item) {
+  const html = item.content || item["content:encoded"] || "";
+
+  const imgMatch = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+
+  if (imgMatch?.[1]) {
+    let imageUrl = imgMatch[1];
+
+    if (imageUrl.startsWith("/")) {
+      imageUrl = `https://www.ufabc.edu.br${imageUrl}`;
+    }
+
+    return imageUrl;
+  }
+
+  return null;
+}
+
 async function parseFeedWithRetry(url, retries = 3) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
@@ -44,6 +62,7 @@ async function main() {
       const url = item.link;
       const summary = cleanText(item.contentSnippet || item.content || "").slice(0, 240);
       const published_at = item.isoDate || item.pubDate || new Date().toISOString();
+      const image_url = extractImage(item);
 
       if (!url) continue;
 
@@ -55,6 +74,7 @@ async function main() {
           source: "UFABC",
           category: "Notícia",
           published_at,
+          image_url,
         },
         { onConflict: "url" }
       );
