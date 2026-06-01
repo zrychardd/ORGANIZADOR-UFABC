@@ -8,6 +8,10 @@ import {
   X, ArrowDown, Minus, ArrowUp, BookOpen, User, Briefcase, Moon, Sun
 } from 'lucide-react'
 
+const [materials, setMaterials] = useState([])
+
+const [materialsLoading, setMaterialsLoading] = useState(false)
+
 const pad2 = (value) => String(value).padStart(2, '0')
 
 const toLocalDateString = (date) => {
@@ -194,6 +198,7 @@ export default function Dashboard({ session, isDark, toggleDark }) {
     fetchPosts()
     fetchEvents()
     fetchNews()
+    fetchMaterials()
     fetchDashboardInsights()
 
     const channel = supabase
@@ -274,6 +279,42 @@ export default function Dashboard({ session, isDark, toggleDark }) {
     }
   }
 
+  const handleDownloadMaterial = async (material) => {
+    const { data, error } = await supabase
+      .storage
+      .from('task-attachments')
+      .createSignedUrl(material.storage_path, 60)
+
+    if (error) {
+      alert('Erro ao gerar link do arquivo.')
+      return
+    }
+
+    if (data?.signedUrl) {
+      window.open(data.signedUrl, '_blank')
+    }
+  }
+
+  const handleDeleteMaterial = async (material) => {
+    const confirmDelete = confirm(`Deseja excluir "${material.file_name}"?`)
+    if (!confirmDelete) return
+
+    await supabase
+      .storage
+      .from('task-attachments')
+      .remove([material.storage_path])
+
+    const { error } = await supabase
+      .from('task_attachments')
+      .delete()
+      .eq('id', material.id)
+
+    if (error) {
+      alert('Erro ao excluir material.')
+    } else {
+      fetchMaterials()
+    }
+  }
   // ==================== LÓGICA DE ANEXOS ====================
   const handleAttachmentAdd = (files) => {
     const allowed = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg']
@@ -354,6 +395,24 @@ export default function Dashboard({ session, isDark, toggleDark }) {
       .single()
 
     if (!error && data) setWeeklyGoal(data)
+  }
+
+  const fetchMaterials = async () => {
+    setMaterialsLoading(true)
+
+    const { data, error } = await supabase
+      .from('task_attachments')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Erro ao buscar materiais:', error.message)
+      setMaterials([])
+    } else {
+      setMaterials(data || [])
+    }
+
+    setMaterialsLoading(false)
   }
 
   const fetchTasks = async () => {
@@ -938,7 +997,7 @@ export default function Dashboard({ session, isDark, toggleDark }) {
           <button onClick={() => setActiveTab('tarefas')} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'tarefas' ? 'bg-[#00674F] text-white shadow-sm' : 'text-[#5a6b63] dark:text-gray-300 hover:bg-[#f0f5f2] dark:hover:bg-gray-800'}`}><ListTodo size={16} /><span>Tarefas</span></button>
           <button onClick={() => setActiveTab('agenda')} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'agenda' ? 'bg-[#00674F] text-white shadow-sm' : 'text-[#5a6b63] dark:text-gray-300 hover:bg-[#f0f5f2] dark:hover:bg-gray-800'}`}><Calendar size={16} /><span>Agenda</span></button>
           <button onClick={() => setActiveTab('noticias')} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'noticias' ? 'bg-[#00674F] text-white shadow-sm' : 'text-[#5a6b63] dark:text-gray-300 hover:bg-[#f0f5f2] dark:hover:bg-gray-800'}`}><Megaphone size={16} /><span>Notícias</span></button>
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-gray-300 cursor-not-allowed"><LayoutGrid size={16} /><span>Feed</span></div>
+          <button onClick={() => setActiveTab('materiais')} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${activeTab === 'materiais' ? 'bg-[#00674F] text-white shadow-sm' : 'text-[#5a6b63] dark:text-gray-300 hover:bg-[#f0f5f2] dark:hover:bg-gray-800'}`}><BookOpen size={16} /><span>Materiais</span></button>
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-gray-300 cursor-not-allowed"><BarChart size={16} /><span>Relatórios</span></div>
           <div className="flex-1" />
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-[#8a9e94] dark:text-gray-400 text-[11px] opacity-50"><ChevronLeft size={14} /><span>Recolher</span></div>
@@ -992,9 +1051,15 @@ export default function Dashboard({ session, isDark, toggleDark }) {
                       <Bell size={22} className="text-[#00674F]" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-2xl font-bold text-[#1a2e26] dark:text-gray-100 leading-none mb-1">2</span>
-                      <span className="text-[13px] font-bold text-[#1a2e26] dark:text-gray-100">Notícias novas</span>
-                      <span className="text-[11px] text-[#8a9e94] dark:text-gray-400 mt-0.5">Fique por dentro</span>
+                      <span className="text-2xl font-bold text-[#1a2e26] dark:text-gray-100 leading-none mb-1">
+                        {materials.length}
+                      </span>
+                      <span className="text-[13px] font-bold text-[#1a2e26] dark:text-gray-100">
+                        Materiais salvos
+                      </span>
+                      <span className="text-[11px] text-[#8a9e94] dark:text-gray-400 mt-0.5">
+                        Arquivos anexados
+                      </span>
                     </div>
                   </div>
 
@@ -1099,6 +1164,95 @@ export default function Dashboard({ session, isDark, toggleDark }) {
                       </div>
                     )}
                   </div>
+
+
+                  {activeTab === 'materiais' && (
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-[#e4e9e6] dark:border-gray-800 p-6 flex flex-col shadow-sm h-full min-h-[480px] animate-fade-in">
+
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-11 h-11 rounded-xl bg-[#e8f5ef] flex items-center justify-center shrink-0">
+                            <BookOpen size={22} className="text-[#00674F]" />
+                          </div>
+                          <div>
+                            <h2 className="text-[18px] font-bold text-[#1a2e26] dark:text-gray-100 leading-none mb-1">
+                              Materiais
+                            </h2>
+                            <p className="text-[12px] text-[#8a9e94] dark:text-gray-400">
+                              Todos os arquivos anexados nas suas tarefas ficam salvos aqui.
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={fetchMaterials}
+                          className="px-4 py-2 bg-[#00674F] text-white rounded-xl text-xs font-bold hover:bg-[#005040] transition-colors shadow-sm"
+                        >
+                          Atualizar materiais
+                        </button>
+                      </div>
+
+                      {materialsLoading ? (
+                        <div className="py-16 text-center text-sm text-[#8a9e94] dark:text-gray-400">
+                          Carregando materiais...
+                        </div>
+                      ) : materials.length === 0 ? (
+                        <div className="flex-1 flex flex-col items-center justify-center text-center">
+                          <div className="w-[72px] h-[72px] rounded-full bg-[#e8f5ef] flex items-center justify-center text-[#00674F] mb-4">
+                            <BookOpen size={32} strokeWidth={1.5} />
+                          </div>
+                          <h4 className="text-[14px] font-bold text-[#1a2e26] dark:text-gray-100">
+                            Nenhum material salvo
+                          </h4>
+                          <p className="text-[12px] text-[#8a9e94] dark:text-gray-400 mt-1 max-w-[280px]">
+                            Adicione anexos em suas tarefas para eles aparecerem aqui.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pr-1">
+                          {materials.map((material) => (
+                            <div
+                              key={material.id}
+                              className="bg-[#fafcfb] dark:bg-gray-800 border border-[#e8ede9] dark:border-gray-800 rounded-2xl p-4 flex items-center justify-between gap-4 hover:shadow-md transition-shadow"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-12 h-12 rounded-xl bg-[#e8f5ef] flex items-center justify-center text-[#00674F] shrink-0">
+                                  <BookOpen size={22} />
+                                </div>
+
+                                <div className="min-w-0">
+                                  <h4 className="text-[13px] font-bold text-[#1a2e26] dark:text-gray-100 truncate">
+                                    {material.file_name}
+                                  </h4>
+                                  <p className="text-[11px] text-[#8a9e94] dark:text-gray-400">
+                                    {material.file_type || 'Arquivo'} • {formatFileSize(material.file_size || 0)}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  onClick={() => handleDownloadMaterial(material)}
+                                  className="w-9 h-9 rounded-xl bg-[#e8f5ef] text-[#00674F] flex items-center justify-center hover:bg-[#d7eee5] transition-colors"
+                                  title="Baixar"
+                                >
+                                  <ArrowDown size={16} />
+                                </button>
+
+                                <button
+                                  onClick={() => handleDeleteMaterial(material)}
+                                  className="w-9 h-9 rounded-xl bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-colors"
+                                  title="Excluir"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Tarefas em destaque Ao Vivo */}
                   <div className="bg-white dark:bg-gray-900 border border-[#e4e9e6] dark:border-gray-800 p-6 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex flex-col h-[280px]">
