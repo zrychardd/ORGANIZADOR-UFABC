@@ -13,13 +13,22 @@ export default async function handler(req, res) {
 
   try {
     // 2. Extração: Lê o site da UFABC com User-Agent para evitar bloqueios
+    // ... dentro do try { ...
     const response = await fetch("https://www.ufabc.edu.br/noticias", {
+      method: "GET",
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      }
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Connection": "keep-alive"
+      },
+      redirect: 'follow'
     });
+
+    if (!response.ok) throw new Error(`Status do site: ${response.status}`);
     
     const html = await response.text();
+// ... resto do código
     const $ = cheerio.load(html);
 
     // Nota: Os seletores dependem da estrutura do site da UFABC
