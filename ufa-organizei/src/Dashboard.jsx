@@ -154,6 +154,7 @@ export default function Dashboard({ session, isDark, toggleDark }) {
   // Estados dos Materiais
   const [materials, setMaterials] = useState([])
   const [materialsLoading, setMaterialsLoading] = useState(false)
+  const [materialToDelete, setMaterialToDelete] = useState(null)
 
   // Estados dos insights do Dashboard
   const [studyStreak, setStudyStreak] = useState({ current_streak: 0, longest_streak: 0 })
@@ -169,6 +170,25 @@ export default function Dashboard({ session, isDark, toggleDark }) {
   const [newEventCategory, setNewEventCategory] = useState('Acadêmico')
   const [agendaView, setAgendaView] = useState('mes') // 'mes' | 'semana' | 'dia'
   const [selectedDate, setSelectedDate] = useState(() => new Date())
+
+  const fetchMaterials = async () => {
+    setMaterialsLoading(true)
+
+    const { data, error } = await supabase
+      .from('task_attachments')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Erro ao buscar materiais:', error.message)
+      setMaterials([])
+    } else {
+      setMaterials(data || [])
+    }
+
+    setMaterialsLoading(false)
+  }
+
 
   // Filtros de Categorias da Agenda
   const [visibleCategories, setVisibleCategories] = useState({
@@ -297,8 +317,11 @@ export default function Dashboard({ session, isDark, toggleDark }) {
   }
 
   const handleDeleteMaterial = async (material) => {
-    const confirmDelete = confirm(`Deseja excluir "${material.file_name}"?`)
-    if (!confirmDelete) return
+
+    await supabase
+      .storage
+      .from('task-attachments')
+      .remove([material.storage_path])
 
     await supabase
       .storage
@@ -398,23 +421,6 @@ export default function Dashboard({ session, isDark, toggleDark }) {
     if (!error && data) setWeeklyGoal(data)
   }
 
-  const fetchMaterials = async () => {
-    setMaterialsLoading(true)
-
-    const { data, error } = await supabase
-      .from('task_attachments')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Erro ao buscar materiais:', error.message)
-      setMaterials([])
-    } else {
-      setMaterials(data || [])
-    }
-
-    setMaterialsLoading(false)
-  }
 
   const fetchTasks = async () => {
     const { data, error } = await supabase
@@ -1241,7 +1247,7 @@ export default function Dashboard({ session, isDark, toggleDark }) {
                                 </button>
 
                                 <button
-                                  onClick={() => handleDeleteMaterial(material)}
+                                  onClick={() => setMaterialToDelete(material)}
                                   className="w-9 h-9 rounded-xl bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-colors"
                                   title="Excluir"
                                 >
@@ -1439,6 +1445,96 @@ export default function Dashboard({ session, isDark, toggleDark }) {
                     </>
                   )}
                 </div>
+              </div>
+            )}
+
+
+            {/* ==================== ABA MATERIAIS ==================== */}
+            {activeTab === 'materiais' && (
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-[#e4e9e6] dark:border-gray-800 p-6 flex flex-col shadow-sm h-full min-h-[480px] animate-fade-in">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-xl bg-[#e8f5ef] flex items-center justify-center shrink-0">
+                      <BookOpen size={22} className="text-[#00674F]" />
+                    </div>
+                    <div>
+                      <h2 className="text-[18px] font-bold text-[#1a2e26] dark:text-gray-100 leading-none mb-1">
+                        Materiais
+                      </h2>
+                      <p className="text-[12px] text-[#8a9e94] dark:text-gray-400">
+                        Todos os arquivos anexados nas suas tarefas ficam salvos aqui.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={fetchMaterials}
+                    disabled={materialsLoading}
+                    className="px-4 py-2 bg-[#00674F] text-white rounded-xl text-xs font-bold hover:bg-[#005040] transition-colors shadow-sm disabled:opacity-60"
+                  >
+                    {materialsLoading ? 'Atualizando...' : 'Atualizar materiais'}
+                  </button>
+                </div>
+
+                {materialsLoading ? (
+                  <div className="py-16 text-center text-sm text-[#8a9e94] dark:text-gray-400">
+                    Carregando materiais...
+                  </div>
+                ) : materials.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center">
+                    <div className="w-[72px] h-[72px] rounded-full bg-[#e8f5ef] flex items-center justify-center text-[#00674F] mb-4">
+                      <BookOpen size={32} strokeWidth={1.5} />
+                    </div>
+                    <h4 className="text-[14px] font-bold text-[#1a2e26] dark:text-gray-100">
+                      Nenhum material salvo
+                    </h4>
+                    <p className="text-[12px] text-[#8a9e94] dark:text-gray-400 mt-1 max-w-[280px]">
+                      Adicione anexos em suas tarefas para eles aparecerem aqui.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pr-1">
+                    {materials.map((material) => (
+                      <div
+                        key={material.id}
+                        className="bg-[#fafcfb] dark:bg-gray-800 border border-[#e8ede9] dark:border-gray-800 rounded-2xl p-4 flex items-center justify-between gap-4 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-12 h-12 rounded-xl bg-[#e8f5ef] flex items-center justify-center text-[#00674F] shrink-0">
+                            <BookOpen size={22} />
+                          </div>
+
+                          <div className="min-w-0">
+                            <h4 className="text-[13px] font-bold text-[#1a2e26] dark:text-gray-100 truncate">
+                              {material.file_name}
+                            </h4>
+                            <p className="text-[11px] text-[#8a9e94] dark:text-gray-400">
+                              {material.file_type || 'Arquivo'} • {formatFileSize(material.file_size || 0)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => handleDownloadMaterial(material)}
+                            className="w-9 h-9 rounded-xl bg-[#e8f5ef] text-[#00674F] flex items-center justify-center hover:bg-[#d7eee5] transition-colors"
+                            title="Baixar"
+                          >
+                            <ArrowDown size={16} />
+                          </button>
+
+                          <button
+                            onClick={() => setMaterialToDelete(material)}
+                            className="w-9 h-9 rounded-xl bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-colors"
+                            title="Excluir"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -2218,6 +2314,46 @@ export default function Dashboard({ session, isDark, toggleDark }) {
           </div>
         </main>
       </div>
+
+      {materialToDelete && (
+        <div className="fixed inset-0 z-[99999] bg-black/40 flex items-center justify-center">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-md shadow-xl">
+
+            <h3 className="text-lg font-bold text-[#1a2e26] dark:text-gray-100">
+              Excluir material?
+            </h3>
+
+            <p className="text-sm text-[#5a6b63] dark:text-gray-400 mt-2">
+              Tem certeza que deseja excluir:
+            </p>
+
+            <p className="text-sm font-semibold mt-2 text-[#00674F]">
+              {materialToDelete.file_name}
+            </p>
+
+            <div className="flex justify-end gap-3 mt-6">
+
+              <button
+                onClick={() => setMaterialToDelete(null)}
+                className="px-4 py-2 rounded-xl border border-[#d9e3de]"
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={() => {
+                  handleDeleteMaterial(materialToDelete)
+                  setMaterialToDelete(null)
+                }}
+                className="px-4 py-2 rounded-xl bg-red-500 text-white font-bold"
+              >
+                Excluir
+              </button>
+
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ==================== MODAL DE CRIAR NOVA TAREFA (NOVO PREMIUM) ==================== */}
       {showTaskModal && (
