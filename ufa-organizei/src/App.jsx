@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
 import Dashboard from './Dashboard'
+import LandingPage from './LandingPage'
 
 export default function App() {
   const [session, setSession] = useState(null)
+  const [showAuth, setShowAuth] = useState(false)
 
   // Lê a preferência salva no localStorage (ou começa no modo claro)
   const [isDark, setIsDark] = useState(() => {
@@ -38,8 +40,22 @@ export default function App() {
 
   const toggleDark = () => setIsDark(prev => !prev)
 
+  if (!session && !showAuth) {
+    return (
+      <LandingPage
+        onAccessApp={() => setShowAuth(true)}
+      />
+    )
+  }
+
   if (!session) {
-    return <Auth onLoginSuccess={(user) => console.log('Logado!')} isDark={isDark} toggleDark={toggleDark} />
+    return (
+      <Auth
+        onLoginSuccess={(user) => console.log('Logado!')}
+        isDark={isDark}
+        toggleDark={toggleDark}
+      />
+    )
   }
 
   return <Dashboard session={session} isDark={isDark} toggleDark={toggleDark} />
