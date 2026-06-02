@@ -25,7 +25,7 @@ Sem instalação. Sem complicação. É só acessar, criar sua conta e começar 
 ### ✅ Minhas Tarefas Acadêmicas
 Cadastre suas tarefas com título e data de entrega. Marque como concluída quando terminar ou delete quando não precisar mais. Só você vê as suas tarefas.
 
-### 📰 Feed Central da UFABC
+### 📰 Feed Central da UFA 
 Um mural coletivo para toda a comunidade. Poste avisos, divulgue eventos, compartilhe resumos ou links úteis. As publicações aparecem em tempo real para todos os usuários logados.
 
 ### 🌙 Dark Mode
@@ -54,7 +54,7 @@ O app segue a identidade oficial da UFABC — verde esmeralda `#00674F` e dourad
 
 ## 🚀 Como usar
 
-1. Acesse **[organizador-ufabc-zmyd.vercel.app](https://organizador-ufabc-zmyd.vercel.app)**
+1. Acesse **[organizador-ufabc-zmyd.vercel.app](https://ufa-organizei-zrychardds-projects.vercel.app)**
 2. Crie sua conta com e-mail e senha
 3. Pronto — comece a organizar!
 
