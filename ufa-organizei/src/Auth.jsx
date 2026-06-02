@@ -40,31 +40,75 @@ export default function Auth({ onLoginSuccess, isDark, toggleDark }) {
   const [showPassword, setShowPassword] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
 
+  const getFriendlyErrorMessage = (errorMessage = '') => {
+    const message = errorMessage.toLowerCase()
+
+    if (message.includes('user already registered') || message.includes('already registered')) {
+      return 'Este e-mail já possui uma conta cadastrada. Faça login para continuar.'
+    }
+
+    if (message.includes('invalid login credentials')) {
+      return 'E-mail ou senha incorretos. Confira os dados e tente novamente.'
+    }
+
+    if (message.includes('password should be at least') || message.includes('weak password')) {
+      return 'A senha precisa ter pelo menos 6 caracteres.'
+    }
+
+    if (message.includes('invalid email')) {
+      return 'Digite um e-mail válido.'
+    }
+
+    if (message.includes('email rate limit exceeded') || message.includes('rate limit')) {
+      return 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.'
+    }
+
+    if (message.includes('signup is disabled')) {
+      return 'O cadastro está temporariamente desativado.'
+    }
+
+    return 'Não foi possível concluir a ação. Verifique os dados e tente novamente.'
+  }
+
   const handleAuth = async (e) => {
     e.preventDefault()
     setLoading(true)
     setMessage({ type: '', text: '' })
 
-    if (isSignUp) {
-      const { data, error } = await supabase.auth.signUp({ email, password })
-      if (error) {
-        setMessage({ type: 'error', text: error.message })
-      } else if (data?.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([{ id: data.user.id, username }])
-        if (profileError) {
-          setMessage({ type: 'error', text: 'Conta criada, mas erro ao salvar perfil: ' + profileError.message })
-        } else {
-          setMessage({ type: 'success', text: 'Cadastro realizado! Verifique seu e-mail para confirmar.' })
+    try {
+      if (isSignUp) {
+        const { data, error } = await supabase.auth.signUp({ email, password })
+
+        if (error) {
+          setMessage({ type: 'error', text: getFriendlyErrorMessage(error.message) })
+          return
         }
+
+        if (data?.user) {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .upsert([{ id: data.user.id, username }])
+
+          if (profileError) {
+            setMessage({ type: 'error', text: 'Conta criada, mas não foi possível salvar o perfil. Tente entrar novamente.' })
+            return
+          }
+
+          onLoginSuccess(data.user)
+        }
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+
+        if (error) {
+          setMessage({ type: 'error', text: getFriendlyErrorMessage(error.message) })
+          return
+        }
+
+        if (data?.user) onLoginSuccess(data.user)
       }
-    } else {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setMessage({ type: 'error', text: error.message })
-      else if (data?.user) onLoginSuccess(data.user)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const inputClass = `w-full pl-10 pr-4 py-[12px] rounded-xl text-[13px] outline-none border transition-all ${isDark
