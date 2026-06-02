@@ -49,11 +49,11 @@ O aplicativo adota uma paleta de cores sofisticada — destacando o verde esmera
 
 Este projeto foi construído utilizando um ecossistema moderno para garantir velocidade, segurança e escalabilidade:
 
-*   **Frontend (Interface):** Desenvolvido com **React 19** e **Vite**, garantindo um carregamento instantâneo e uma navegação fluida.
-*   **Estilização:** Construído com **Tailwind CSS v4** para um design responsivo, elegante e padronizado em qualquer tamanho de tela.
-*   **Banco de Dados & Autenticação:** Todo o back-end, incluindo a segurança de login (com criptografia) e o banco de dados relacional (PostgreSQL) para guardar as tarefas e postagens, é gerenciado pelo **Supabase**.
-*   **Hospedagem & Infraestrutura:** O deploy é feito na **Vercel**, mantendo o site rápido e com integração contínua (CI/CD) a cada nova atualização no código.
-*   **Inteligência Artificial:** Integração com a API do **Google Gemini** (modelo Flash) e serviços de Proxy/Cron-jobs para alimentar automaticamente a seção de notícias do portal.
+* **Frontend (Interface):** Desenvolvido com **React 19** e **Vite**, garantindo um carregamento instantâneo e uma navegação fluida.
+* **Estilização:** Construído com **Tailwind CSS v4** para um design responsivo, elegante e padronizado em qualquer tamanho de tela.
+* **Banco de Dados & Autenticação:** Todo o back-end, incluindo a segurança de login (com criptografia) e o banco de dados relacional (**PostgreSQL**) para armazenar tarefas, eventos, metas e informações dos usuários, é gerenciado pelo **Supabase**.
+* **Hospedagem & Infraestrutura:** O deploy é realizado na **Vercel**, mantendo o site rápido e com integração contínua (**CI/CD**) a cada atualização enviada para o repositório.
+* **Automação de Notícias:** Utiliza **GitHub Actions**, **Node.js** e **Supabase** para buscar automaticamente notícias do portal da universidade em intervalos programados, armazenando-as no banco de dados e disponibilizando-as em tempo real na plataforma.
 
 <div align="center">
 
