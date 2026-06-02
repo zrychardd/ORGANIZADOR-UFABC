@@ -54,7 +54,7 @@ O app segue a identidade oficial da UFABC — verde esmeralda `#00674F` e dourad
 
 ## 🚀 Como usar
 
-1. Acesse **[organizador-ufabc-zmyd.vercel.app](https://ufa-organizei-zrychardds-projects.vercel.app)**
+1. Acesse **[ufa-organizei](https://ufa-organizei-zrychardds-projects.vercel.app)**
 2. Crie sua conta com e-mail e senha
 3. Pronto — comece a organizar!
 
