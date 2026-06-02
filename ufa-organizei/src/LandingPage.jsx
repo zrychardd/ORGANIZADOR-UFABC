@@ -1,3 +1,7 @@
+//<a href="#faq" className="hover:text-[#00674F] transition-colors">Perguntas frequentes</a> --- IGNORE ---
+//<a href="#contato" className="hover:text-[#00674F] transition-colors">Contato</a>
+
+
 import dashboardImg from './assets/PrtSc/Dashboard.png'
 
 import React from 'react'
@@ -86,8 +90,6 @@ export default function LandingPage({ onAccessApp }) {
                     <a href="#inicio" className="text-[#00674F] border-b-2 border-[#00674F] pb-0.5">Início</a>
                     <a href="#recursos" className="hover:text-[#00674F] transition-colors">Recursos</a>
                     <a href="#sobre" className="hover:text-[#00674F] transition-colors">Sobre</a>
-                    <a href="#faq" className="hover:text-[#00674F] transition-colors">Perguntas frequentes</a>
-                    <a href="#contato" className="hover:text-[#00674F] transition-colors">Contato</a>
                 </nav>
 
                 <button
