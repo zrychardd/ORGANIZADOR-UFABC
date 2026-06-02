@@ -2,7 +2,7 @@
 
 # 📋 UFA ORGANIZEI
 
-### O organizador acadêmico da UFABC
+### O organizador acadêmico UFA ORGANIZEI
 
 *Gerencie suas tarefas, fique por dentro do campus e organize sua vida universitária — tudo em um só lugar.*
 
