@@ -38,9 +38,7 @@ Cadastro e login com e-mail e senha. Seus dados são privados e protegidos pelo 
 
 ## 🎨 Identidade Visual
 
-O app segue a identidade oficial da UFABC — verde esmeralda `#00674F` e dourado metálico `#D3AF37` — com um design moderno inspirado em ferramentas como Notion e Linear.
-
----
+O aplicativo adota uma paleta de cores sofisticada — destacando o verde esmeralda #00674F e o dourado metálico #D3AF37 — alinhada a um design moderno, limpo e funcional, com inspiração direta em ferramentas de produtividade como Notion e Linear.
 
 ## 🛠️ Feito com
 
