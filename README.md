@@ -6,7 +6,7 @@
 
 *Gerencie suas tarefas, fique por dentro do campus e organize sua vida universitária — tudo em um só lugar.*
 
-🔗 **[Acessar o app](https://organizador-ufabc-zmyd.vercel.app)**
+🔗 **[Acessar o app](https://ufa-organizei-zrychardds-projects.vercel.app)**
 
 </div>
 
