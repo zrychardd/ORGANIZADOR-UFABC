@@ -170,6 +170,8 @@ export default function Dashboard({ session, isDark, toggleDark }) {
   const [newEventCategory, setNewEventCategory] = useState('Acadêmico')
   const [agendaView, setAgendaView] = useState('mes') // 'mes' | 'semana' | 'dia'
   const [selectedDate, setSelectedDate] = useState(() => new Date())
+  const [confirmDeleteEventId, setConfirmDeleteEventId] = useState(null) // Modal de confirmação
+  const [deletingEventId, setDeletingEventId] = useState(null) // Animação de saída
 
   const fetchMaterials = async () => {
     setMaterialsLoading(true)
@@ -221,6 +223,17 @@ export default function Dashboard({ session, isDark, toggleDark }) {
     fetchNews()
     fetchMaterials()
     fetchDashboardInsights()
+
+    // Injeta keyframes de animação
+    const styleEl = document.createElement('style')
+    styleEl.id = 'ufa-animations'
+    styleEl.textContent = `
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes fadeOutScale { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.92); } }
+      @keyframes slideUpModal { from { opacity: 0; transform: translateY(18px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    `
+    if (!document.getElementById('ufa-animations')) document.head.appendChild(styleEl)
+    return () => { const el = document.getElementById('ufa-animations'); if (el) el.remove() }
 
     const channel = supabase
       .channel('schema-db-changes')
@@ -790,8 +803,21 @@ export default function Dashboard({ session, isDark, toggleDark }) {
   }
 
   const handleDeleteEvent = async (id) => {
+    setDeletingEventId(id)
+    await new Promise(r => setTimeout(r, 350)) // Espera animação de saída
     const { error } = await supabase.from('events').delete().eq('id', id)
-    if (!error) fetchEvents()
+    if (!error) {
+      setDeletingEventId(null)
+      setConfirmDeleteEventId(null)
+      fetchEvents()
+    } else {
+      setDeletingEventId(null)
+    }
+  }
+
+  const requestDeleteEvent = (id, e) => {
+    if (e) e.stopPropagation()
+    setConfirmDeleteEventId(id)
   }
 
   const pendingTasksCount = tasks.filter(task => !task.is_completed).length
@@ -1162,7 +1188,7 @@ export default function Dashboard({ session, isDark, toggleDark }) {
                                 </div>
                                 <div className="min-w-0">
                                   <h4 className="text-[13px] font-bold text-[#1a2e26] dark:text-gray-100 truncate">{ev.title}</h4>
-                                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{ev.event_date} {ev.event_time ? `- ${ev.event_time}` : ''}</p>
+                                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{ev.event_date.split('-').reverse().join('/')} {ev.event_time ? `- ${ev.event_time}` : ''}</p>
                                 </div>
                               </div>
                             </div>
@@ -1293,7 +1319,7 @@ export default function Dashboard({ session, isDark, toggleDark }) {
                               </div>
                               <div className="min-w-0">
                                 <h4 className="text-[13px] font-bold text-[#1a2e26] dark:text-gray-100 truncate">{task.title}</h4>
-                                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{task.due_date ? `Prazo: ${task.due_date}` : 'Sem prazo definido'}</p>
+                                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{task.due_date ? `Prazo: ${task.due_date.split('-').reverse().join('/')}` : 'Sem prazo definido'}</p>
                               </div>
                             </div>
                           </div>
@@ -1904,15 +1930,22 @@ export default function Dashboard({ session, isDark, toggleDark }) {
                               return (
                                 <div
                                   key={ev.id}
-                                  className={`absolute left-2 right-2 rounded-xl border-l-4 px-3 py-2 shadow-sm ${style.bg} ${style.text} ${style.border}`}
-                                  style={{ top: `${pos.top + 6}px`, height: `${pos.height}px` }}
+                                  className={`absolute left-2 right-2 rounded-xl border-l-4 px-3 py-2 shadow-sm ${style.bg} ${style.text} ${style.border} group`}
+                                  style={{ top: `${pos.top + 6}px`, height: `${pos.height}px`, ...(deletingEventId === ev.id ? { animation: 'fadeOutScale 0.35s ease forwards' } : {}) }}
                                 >
-                                  <div className="text-[11px] font-bold truncate">{ev.title}</div>
+                                  <div className="text-[11px] font-bold truncate pr-5">{ev.title}</div>
                                   <div className="flex items-center gap-1 mt-1 text-[9px] opacity-80">
                                     <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
                                     {ev.category}
                                   </div>
                                   <div className="text-[9px] opacity-75 mt-0.5">{ev.event_time || 'Sem horário'}</div>
+                                  <button
+                                    onClick={(e) => requestDeleteEvent(ev.id, e)}
+                                    className="absolute top-1 right-1 p-1 rounded-md bg-white/70 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+                                    title="Remover evento"
+                                  >
+                                    <Trash2 size={10} />
+                                  </button>
                                 </div>
                               )
                             })}
@@ -1949,9 +1982,16 @@ export default function Dashboard({ session, isDark, toggleDark }) {
                         const style = getCategoryStyle(ev.category)
                         const pos = getEventPosition(ev.event_time)
                         return (
-                          <div key={ev.id} className={`absolute left-[72px] right-4 rounded-xl border-l-4 px-3 py-2 shadow-sm ${style.bg} ${style.text} ${style.border}`} style={{ top: `${pos.top + 6}px`, height: `${pos.height}px` }}>
-                            <div className="text-[11px] font-bold truncate">{ev.title}</div>
+                          <div key={ev.id} className={`absolute left-[72px] right-4 rounded-xl border-l-4 px-3 py-2 shadow-sm ${style.bg} ${style.text} ${style.border} group`} style={{ top: `${pos.top + 6}px`, height: `${pos.height}px`, ...(deletingEventId === ev.id ? { animation: 'fadeOutScale 0.35s ease forwards' } : {}) }}>
+                            <div className="text-[11px] font-bold truncate pr-5">{ev.title}</div>
                             <div className="text-[9px] opacity-75 mt-1">{ev.category} • {ev.event_time || 'Sem horário'}</div>
+                            <button
+                              onClick={(e) => requestDeleteEvent(ev.id, e)}
+                              className="absolute top-1.5 right-1.5 p-1 rounded-md bg-white/70 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+                              title="Remover evento"
+                            >
+                              <Trash2 size={11} />
+                            </button>
                           </div>
                         )
                       })}
@@ -2000,10 +2040,20 @@ export default function Dashboard({ session, isDark, toggleDark }) {
                                 return (
                                   <div
                                     key={ev.id}
-                                    className={`text-[9px] px-1.5 py-0.5 rounded-md border-l-2 leading-tight ${style.bg} ${style.text} ${style.border}`}
+                                    className={`text-[9px] px-1.5 py-0.5 rounded-md border-l-2 leading-tight ${style.bg} ${style.text} ${style.border} group/ev relative flex items-center justify-between gap-1`}
+                                    style={deletingEventId === ev.id ? { animation: 'fadeOutScale 0.35s ease forwards' } : {}}
                                   >
-                                    <div className="font-semibold truncate">{ev.title}</div>
-                                    {ev.event_time && <div className="opacity-70 font-normal">{ev.event_time}</div>}
+                                    <div className="min-w-0">
+                                      <div className="font-semibold truncate">{ev.title}</div>
+                                      {ev.event_time && <div className="opacity-70 font-normal">{ev.event_time}</div>}
+                                    </div>
+                                    <button
+                                      onClick={(e) => requestDeleteEvent(ev.id, e)}
+                                      className="shrink-0 opacity-0 group-hover/ev:opacity-100 transition-opacity p-0.5 rounded hover:bg-red-100 text-red-400"
+                                      title="Remover"
+                                    >
+                                      <Trash2 size={8} />
+                                    </button>
                                   </div>
                                 )
                               })}
@@ -2095,7 +2145,9 @@ export default function Dashboard({ session, isDark, toggleDark }) {
                         const displayDate = `${String(dateObj.getDate()).padStart(2, '0')} ${month.charAt(0).toUpperCase() + month.slice(1)}`;
 
                         return (
-                          <div key={ev.id} className="bg-white dark:bg-gray-900 p-3.5 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#e8ede9] dark:border-gray-800 flex items-center justify-between group transition-all hover:shadow-md cursor-pointer relative overflow-hidden">
+                          <div key={ev.id} className="bg-white dark:bg-gray-900 p-3.5 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#e8ede9] dark:border-gray-800 flex items-center justify-between group transition-all hover:shadow-md cursor-pointer relative overflow-hidden"
+                            style={deletingEventId === ev.id ? { animation: 'fadeOutScale 0.35s ease forwards' } : { animation: 'fadeIn 0.25s ease' }}
+                          >
                             <div className="flex items-center gap-3.5 min-w-0">
                               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${style.bg} ${style.text}`}>
                                 <Calendar size={18} />
@@ -2114,7 +2166,7 @@ export default function Dashboard({ session, isDark, toggleDark }) {
                             </div>
 
                             {/* Botão de deletar escondido que aparece apenas no hover */}
-                            <button onClick={(e) => { e.stopPropagation(); handleDeleteEvent(ev.id); }} className="absolute right-2 top-1/2 -translate-y-1/2 bg-red-50 text-red-500 rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border border-red-100">
+                            <button onClick={(e) => { requestDeleteEvent(ev.id, e) }} className="absolute right-2 top-1/2 -translate-y-1/2 bg-red-50 text-red-500 rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border border-red-100">
                               <Trash2 size={14} />
                             </button>
                           </div>
@@ -2357,7 +2409,7 @@ export default function Dashboard({ session, isDark, toggleDark }) {
 
       {/* ==================== MODAL DE CRIAR NOVA TAREFA (NOVO PREMIUM) ==================== */}
       {showTaskModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[99999] p-4 animate-fade-in">
           <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-[600px] w-full p-6 shadow-xl flex flex-col max-h-[90vh] overflow-y-auto scrollbar-thin border border-gray-100 dark:border-gray-800">
 
             {/* Header Modal */}
@@ -2542,9 +2594,50 @@ export default function Dashboard({ session, isDark, toggleDark }) {
         </div>
       )}
 
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DE EVENTO */}
+      {confirmDeleteEventId && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[99999] p-4" style={{ animation: 'fadeIn 0.18s ease' }}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-sm w-full p-6 shadow-xl border border-gray-100 dark:border-gray-800" style={{ animation: 'slideUpModal 0.22s cubic-bezier(0.34,1.56,0.64,1)' }}>
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-red-50 border border-red-100 flex items-center justify-center">
+                <Trash2 size={22} className="text-red-500" />
+              </div>
+              <div>
+                <h3 className="text-[15px] font-bold text-[#1a2e26] dark:text-gray-100">Remover evento?</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                  {(() => {
+                    const ev = events.find(e => e.id === confirmDeleteEventId)
+                    return ev ? `"${ev.title}" será removido permanentemente da sua agenda.` : 'Este evento será removido permanentemente.'
+                  })()}
+                </p>
+              </div>
+              <div className="flex gap-2.5 w-full mt-1">
+                <button
+                  onClick={() => setConfirmDeleteEventId(null)}
+                  className="flex-1 px-4 py-2.5 text-xs font-bold rounded-xl border border-[#dde5e0] text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => handleDeleteEvent(confirmDeleteEventId)}
+                  disabled={deletingEventId === confirmDeleteEventId}
+                  className="flex-1 px-4 py-2.5 text-xs font-bold rounded-xl bg-red-500 hover:bg-red-600 text-white transition-colors disabled:opacity-60 flex items-center justify-center gap-1.5"
+                >
+                  {deletingEventId === confirmDeleteEventId ? (
+                    <><span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Removendo...</>
+                  ) : (
+                    <><Trash2 size={13} /> Remover</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL DE COMPROMISSO AGENDA (MANTIDO) */}
       {showEventModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[99999] p-4">
           <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4 border border-gray-100 dark:border-gray-800">
             <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100">Criar Novo Compromisso</h3>
             <form onSubmit={handleAddEvent} className="space-y-3">
