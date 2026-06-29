@@ -115,6 +115,7 @@ const getCalendarDays = (baseDate) => {
 export default function Dashboard({ session, isDark, toggleDark }) {
   // Estado de Navigation das Abas
   const [activeTab, setActiveTab] = useState('inicio')
+  const [isFeedOpen, setIsFeedOpen] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
 
   // Estados das Tarefas
@@ -231,6 +232,7 @@ export default function Dashboard({ session, isDark, toggleDark }) {
       @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
       @keyframes fadeOutScale { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.92); } }
       @keyframes slideUpModal { from { opacity: 0; transform: translateY(18px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      @keyframes feedSlideUp { from { opacity: 0; transform: translateY(20px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
     `
     if (!document.getElementById('ufa-animations')) document.head.appendChild(styleEl)
     return () => { const el = document.getElementById('ufa-animations'); if (el) el.remove() }
@@ -1037,8 +1039,8 @@ export default function Dashboard({ session, isDark, toggleDark }) {
         </aside>
 
         {/* CONTEÚDO DAS ABAS */}
-        <main className="flex-1 p-[22px] grid grid-cols-1 lg:grid-cols-3 gap-[18px] overflow-auto">
-          <div className="lg:col-span-2 flex flex-col gap-4">
+        <main className="flex-1 p-[22px] flex flex-col gap-[18px] overflow-auto">
+          <div className="flex flex-col gap-4">
 
             {/* ==================== ABA INÍCIO (DESIGN PREMIUM + DADOS AO VIVO) ==================== */}
             {activeTab === 'inicio' && (
@@ -2120,252 +2122,161 @@ export default function Dashboard({ session, isDark, toggleDark }) {
             )}
           </div>
 
-          {/* ==================== COLUNA DA DIREITA (DESIGN PREMIUM FIEL AO ANEXO 2) ==================== */}
-          <div className="space-y-6">
-            {activeTab === 'agenda' ? (
-              <>
-                {/* Bloco Lateral: Próximos Eventos (Títulos Flutuantes e Cards Individuais) */}
-                <div className="flex flex-col">
-                  <div className="flex justify-between items-center mb-3 px-1">
-                    <span className="text-[15px] font-bold text-[#1a2e26] dark:text-gray-100">Próximos eventos</span>
-                    <span className="text-[11px] font-bold text-[#00674F] cursor-pointer hover:underline">Ver todos</span>
-                  </div>
-
-                  <div className="space-y-3 max-h-[350px] overflow-y-auto scrollbar-none pr-1 pb-2">
-                    {events.length === 0 ? (
-                      <p className="text-center text-gray-400 text-xs py-8">Nenhum evento criado.</p>
-                    ) : (
-                      events.map(ev => {
-                        const style = getCategoryStyle(ev.category);
-
-                        // Formatação de data mockada para o visual premium (ex: "03 Mai")
-                        const dateObj = new Date(ev.event_date);
-                        dateObj.setDate(dateObj.getDate() + 1); // Correção simples de timezone
-                        const month = dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '');
-                        const displayDate = `${String(dateObj.getDate()).padStart(2, '0')} ${month.charAt(0).toUpperCase() + month.slice(1)}`;
-
-                        return (
-                          <div key={ev.id} className="bg-white dark:bg-gray-900 p-3.5 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#e8ede9] dark:border-gray-800 flex items-center justify-between group transition-all hover:shadow-md cursor-pointer relative overflow-hidden"
-                            style={deletingEventId === ev.id ? { animation: 'fadeOutScale 0.35s ease forwards' } : { animation: 'fadeIn 0.25s ease' }}
-                          >
-                            <div className="flex items-center gap-3.5 min-w-0">
-                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${style.bg} ${style.text}`}>
-                                <Calendar size={18} />
-                              </div>
-                              <div className="min-w-0">
-                                <h4 className="text-[13px] font-bold text-[#1a2e26] dark:text-gray-100 truncate">{ev.title}</h4>
-                                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                                  {ev.location ? ev.location : ev.category}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-col items-end shrink-0 pl-3">
-                              <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300">{displayDate}</span>
-                              {ev.event_time && <span className="text-[11px] text-gray-400 font-medium mt-0.5">{ev.event_time}</span>}
-                            </div>
-
-                            {/* Botão de deletar escondido que aparece apenas no hover */}
-                            <button onClick={(e) => { requestDeleteEvent(ev.id, e) }} className="absolute right-2 top-1/2 -translate-y-1/2 bg-red-50 text-red-500 rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border border-red-100">
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        )
-                      })
-                    )}
-                  </div>
-                </div>
-
-                {/* Bloco Lateral: Calendários (Container Branco Único com Checkboxes Customizados) */}
-                <div className="flex flex-col mt-2">
-                  <div className="flex justify-between items-center mb-3 px-1">
-                    <span className="text-[15px] font-bold text-[#1a2e26] dark:text-gray-100">Calendários</span>
-                    <span className="text-[11px] font-bold text-[#00674F] cursor-pointer hover:underline">Gerenciar</span>
-                  </div>
-
-                  <div className="bg-white dark:bg-gray-900 rounded-2xl border border-[#e8ede9] dark:border-gray-800 p-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] space-y-1">
-                    {Object.keys(visibleCategories).map(cat => {
-                      const style = getCategoryStyle(cat);
-                      return (
-                        <label key={cat} className="flex items-center justify-between cursor-pointer select-none p-2.5 rounded-xl hover:bg-[#fafcfb] dark:bg-gray-800 transition-colors">
-                          <div className="flex items-center gap-3.5 text-[13px] font-semibold text-gray-700 dark:text-gray-200">
-                            {/* Checkbox customizado idêntico ao design */}
-                            <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors ${visibleCategories[cat] ? 'bg-[#00674F] border-[#00674F]' : 'border-gray-300'}`}>
-                              {visibleCategories[cat] && <Check size={12} strokeWidth={3} className="text-white" />}
-                            </div>
-                            <input
-                              type="checkbox"
-                              checked={visibleCategories[cat]}
-                              onChange={(e) => setVisibleCategories(prev => ({ ...prev, [cat]: e.target.checked }))}
-                              className="hidden"
-                            />
-                            <span>{cat}</span>
-                          </div>
-                          <div className={`w-2 h-2 rounded-full shadow-sm ${style.dot}`} />
-                        </label>
-                      )
-                    })}
-                  </div>
-                </div>
-              </>
-            ) : activeTab === 'tarefas' ? (
-
-              /* ==================== VISÃO GERAL DE TAREFAS ==================== */
-              <div className="space-y-6 animate-fade-in">
-                {/* Card Visão Geral */}
-                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-[#e4e9e6] dark:border-gray-800 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-                  <div className="flex justify-between items-center mb-5 px-1">
-                    <span className="text-[15px] font-bold text-[#1a2e26] dark:text-gray-100">Visão geral</span>
-                    <span className="text-[11px] font-bold text-[#00674F] cursor-pointer hover:underline">Ver detalhes</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 mb-6">
-                    <div className="bg-[#fafcfb] dark:bg-gray-800 border border-[#e8ede9] dark:border-gray-800 p-3.5 rounded-xl flex flex-col gap-2">
-                      <div className="flex items-center gap-2">
-                        <Calendar size={14} className="text-[#00674F]" />
-                        <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</span>
-                      </div>
-                      <span className="text-xl font-bold text-[#1a2e26] dark:text-gray-100 leading-none">{tasks.length}</span>
-                    </div>
-
-                    <div className="bg-[#fafcfb] dark:bg-gray-800 border border-[#e8ede9] dark:border-gray-800 p-3.5 rounded-xl flex flex-col gap-2">
-                      <div className="flex items-center gap-2">
-                        <Clock size={14} className="text-amber-500" />
-                        <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pendentes</span>
-                      </div>
-                      <span className="text-xl font-bold text-[#1a2e26] dark:text-gray-100 leading-none">{pendingTasksCount}</span>
-                    </div>
-
-                    <div className="bg-[#fafcfb] dark:bg-gray-800 border border-[#e8ede9] dark:border-gray-800 p-3.5 rounded-xl flex flex-col gap-2">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle size={14} className="text-[#00674F]" />
-                        <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Concluídas</span>
-                      </div>
-                      <span className="text-xl font-bold text-[#1a2e26] dark:text-gray-100 leading-none">{tasks.length - pendingTasksCount}</span>
-                    </div>
-
-                    <div className="bg-[#fafcfb] dark:bg-gray-800 border border-[#e8ede9] dark:border-gray-800 p-3.5 rounded-xl flex flex-col gap-2 opacity-50">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Atrasadas</span>
-                      </div>
-                      <span className="text-xl font-bold text-gray-400 leading-none">0</span>
-                    </div>
-                  </div>
-
-                  {/* Barra de Progresso Real */}
-                  <div className="px-1">
-                    <div className="flex justify-between text-[11px] font-bold mb-2">
-                      <span className="text-gray-600 dark:text-gray-300">Progresso geral</span>
-                      <span className="text-[#00674F] text-[13px]">{tasks.length ? Math.round(((tasks.length - pendingTasksCount) / tasks.length) * 100) : 0}%</span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                      <div className="bg-[#00674F] h-full rounded-full transition-all duration-500" style={{ width: `${tasks.length ? ((tasks.length - pendingTasksCount) / tasks.length) * 100 : 0}%` }}></div>
-                    </div>
-                    <p className="text-[10px] text-gray-400 mt-2 font-medium">{tasks.length - pendingTasksCount} de {tasks.length} tarefas concluídas</p>
-                  </div>
-                </div>
-
-                {/* Card de Etiquetas/Categorias */}
-                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-[#e4e9e6] dark:border-gray-800 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-                  <div className="flex justify-between items-center mb-4 px-1">
-                    <span className="text-[15px] font-bold text-[#1a2e26] dark:text-gray-100">Etiquetas</span>
-                    <span className="text-[11px] font-bold text-[#00674F] cursor-pointer hover:underline">Gerenciar</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="px-2.5 py-1 bg-[#e8f5ef] text-[#00674F] text-[10px] font-bold rounded-lg border border-[#a3d9c9] cursor-pointer hover:bg-[#d1ebe0] transition-colors">Acadêmico <span className="ml-1 opacity-60">12</span></span>
-                    <span className="px-2.5 py-1 bg-amber-50 text-amber-700 text-[10px] font-bold rounded-lg border border-amber-200 cursor-pointer hover:bg-amber-100 transition-colors">Pessoal <span className="ml-1 opacity-60">3</span></span>
-                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-lg border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition-colors">Projeto <span className="ml-1 opacity-60">2</span></span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* FEED CENTRAL (OUTRAS ABAS) */
-              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-[#e4e9e6] dark:border-gray-800 p-6 flex flex-col h-full min-h-[480px] shadow-sm relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#00674F] to-[#D3AF37]" />
-                <div className="flex items-center gap-2.5 mb-3.5">
-                  <div className="w-9 h-9 rounded-xl bg-[#fdf5e0] flex items-center justify-center"><Megaphone size={18} className="text-[#D3AF37]" /></div>
-                  <div><div className="text-[15px] font-medium text-[#1a2e26] dark:text-gray-100">Feed Central da UFA</div><div className="text-[11px] text-[#8a9e94] dark:text-gray-400 mt-0.5">Fique por dentro das novidades.</div></div>
-                </div>
-                <form onSubmit={handleCreatePost} className="flex gap-2 mb-4">
-                  <input type="text" placeholder="O que está acontecendo no campus?" value={newPostContent} onChange={(e) => setNewPostContent(e.target.value)} className="flex-1 px-3 py-2 border border-[#dde5e0] dark:border-gray-700 rounded-xl text-xs bg-[#fafcfb] dark:bg-gray-800 outline-none" required />
-                  <button type="submit" className="w-9 h-9 rounded-xl bg-[#D3AF37] text-white flex items-center justify-center shadow-sm"><Send size={14} /></button>
-                </form>
-                <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
-                  {posts.map((post, index) => {
-                    const authorName = post.profiles?.username || 'Estudante UFA'
-                    const initials = authorName.slice(0, 2).toUpperCase()
-                    return (
-                      <div key={post.id} className="p-4 rounded-2xl bg-white dark:bg-gray-800 border border-[#e8ede9] dark:border-gray-700 shadow-[0_1px_6px_rgba(0,0,0,0.035)] hover:shadow-md transition-all">
-                        <div className="flex items-start gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ${index % 2 === 0 ? 'bg-gradient-to-br from-[#D3AF37] to-[#b8942a]' : 'bg-gradient-to-br from-[#00674F] to-[#004c3b]'}`}>
-                            {initials}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <div>
-                                <div className="text-[13px] font-bold text-[#1a2e26] dark:text-gray-100 leading-none">{authorName}</div>
-                                <div className="text-[10px] text-[#8a9e94] dark:text-gray-400 mt-1">{formatRelativeTime(post.created_at)}</div>
-                              </div>
-                              <button className="text-gray-300 hover:text-[#00674F] px-1 rounded-md">•••</button>
-                            </div>
-                            <p className="text-[12px] text-[#5a6b63] dark:text-gray-300 mt-3 whitespace-pre-wrap break-words leading-relaxed">{post.content}</p>
-                            <div className="flex items-center gap-5 pt-3 mt-3 border-t border-[#eef2ef] dark:border-gray-700 text-[11px] text-gray-400">
-                              <button type="button" onClick={() => handleToggleLike(post)} className={`flex items-center gap-1.5 transition-colors ${post.liked_by_me ? 'text-[#00674F] font-bold' : 'hover:text-[#00674F]'}`}>
-                                {post.liked_by_me ? '♥' : '♡'} <span>{post.likes_count || 0}</span>
-                              </button>
-                              <button type="button" onClick={() => handleToggleComments(post.id)} className={`flex items-center gap-1.5 transition-colors ${openCommentsPostId === post.id ? 'text-[#00674F] font-bold' : 'hover:text-[#00674F]'}`}>
-                                💬 <span>{post.comments_count || 0}</span>
-                              </button>
-                            </div>
-
-                            {openCommentsPostId === post.id && (
-                              <div className="mt-3 pt-3 border-t border-[#eef2ef] dark:border-gray-700 space-y-3">
-                                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                                  {(postCommentsMap[post.id] || []).length === 0 ? (
-                                    <p className="text-[11px] text-gray-400">Nenhum comentário ainda.</p>
-                                  ) : (
-                                    (postCommentsMap[post.id] || []).map(comment => (
-                                      <div key={comment.id} className="flex gap-2">
-                                        <div className="w-7 h-7 rounded-full bg-[#e8f5ef] text-[#00674F] flex items-center justify-center text-[10px] font-bold shrink-0">
-                                          {(comment.author_name || 'EU').slice(0, 2).toUpperCase()}
-                                        </div>
-                                        <div className="flex-1 bg-[#fafcfb] dark:bg-gray-900 border border-[#e8ede9] dark:border-gray-700 rounded-xl px-3 py-2">
-                                          <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-[11px] font-bold text-[#1a2e26] dark:text-gray-100">{comment.author_name || 'Estudante UFA'}</span>
-                                            <span className="text-[9px] text-gray-400">{formatRelativeTime(comment.created_at)}</span>
-                                          </div>
-                                          <p className="text-[11px] text-[#5a6b63] dark:text-gray-300">{comment.content}</p>
-                                        </div>
-                                      </div>
-                                    ))
-                                  )}
-                                </div>
-                                <div className="flex gap-2">
-                                  <input
-                                    type="text"
-                                    placeholder="Escreva um comentário..."
-                                    value={commentInputs[post.id] || ''}
-                                    onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
-                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreateComment(post.id) } }}
-                                    className="flex-1 px-3 py-2 border border-[#dde5e0] dark:border-gray-700 rounded-xl text-[11px] bg-white dark:bg-gray-800 outline-none focus:border-[#00674F]"
-                                  />
-                                  <button type="button" onClick={() => handleCreateComment(post.id)} className="w-9 h-9 rounded-xl bg-[#00674F] text-white flex items-center justify-center shadow-sm">
-                                    <Send size={13} />
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
         </main>
       </div>
+
+      {/* ===================== FEED FLUTUANTE ===================== */}
+      {/* Botão flutuante */}
+      <button
+        onClick={() => setIsFeedOpen(true)}
+        className="fixed bottom-6 right-6 z-[99990] w-14 h-14 rounded-full bg-gradient-to-br from-[#00674F] to-[#004c3b] text-white shadow-[0_4px_20px_rgba(0,103,79,0.45)] hover:shadow-[0_6px_28px_rgba(0,103,79,0.6)] hover:scale-110 active:scale-95 transition-all duration-200 flex items-center justify-center"
+        title="Feed Central da UFA"
+      >
+        <Megaphone size={22} />
+        {posts.length > 0 && (
+          <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#D3AF37] text-white text-[9px] font-bold flex items-center justify-center shadow-sm">
+            {posts.length > 9 ? '9+' : posts.length}
+          </span>
+        )}
+      </button>
+
+      {/* Painel flutuante */}
+      {isFeedOpen && (
+        <div
+          className="fixed bottom-[88px] right-6 z-[99990] w-[420px] max-w-[calc(100vw-20px)] flex flex-col rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.18)] overflow-hidden border border-[#e4e9e6] dark:border-gray-800"
+          style={{
+            height: 'min(650px, 80vh)',
+            animation: 'feedSlideUp 0.25s cubic-bezier(0.34,1.4,0.64,1)',
+          }}
+        >
+          {/* Header */}
+          <div className="bg-gradient-to-r from-[#003d2e] to-[#00674F] px-4 py-3 flex items-center gap-3 shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-[#D3AF37]/20 border border-[#D3AF37]/30 flex items-center justify-center">
+              <Megaphone size={16} className="text-[#D3AF37]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-bold text-white leading-none">Feed Central da UFA</div>
+              <div className="text-[10px] text-white/60 mt-0.5">Fique por dentro das novidades.</div>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setIsFeedOpen(false)}
+                className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+                title="Minimizar"
+              >
+                <span className="text-[16px] leading-none mb-0.5">−</span>
+              </button>
+              <button
+                onClick={() => setIsFeedOpen(false)}
+                className="w-7 h-7 rounded-lg bg-white/10 hover:bg-red-500/60 text-white flex items-center justify-center transition-colors"
+                title="Fechar"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden">
+            {/* Input de post */}
+            <div className="px-4 py-3 border-b border-[#eef2ef] dark:border-gray-800 shrink-0">
+              <form onSubmit={handleCreatePost} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="O que está acontecendo no campus?"
+                  value={newPostContent}
+                  onChange={(e) => setNewPostContent(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-[#dde5e0] dark:border-gray-700 rounded-xl text-xs bg-[#fafcfb] dark:bg-gray-800 outline-none focus:border-[#00674F]"
+                  required
+                />
+                <button type="submit" className="w-9 h-9 rounded-xl bg-[#D3AF37] hover:bg-[#b8942a] text-white flex items-center justify-center shadow-sm transition-colors">
+                  <Send size={14} />
+                </button>
+              </form>
+            </div>
+
+            {/* Lista de posts */}
+            <div className="flex-1 overflow-y-auto space-y-2 p-3 scrollbar-thin">
+              {posts.map((post, index) => {
+                const authorName = post.profiles?.username || 'Estudante UFA'
+                const initials = authorName.slice(0, 2).toUpperCase()
+                return (
+                  <div key={post.id} className="p-4 rounded-2xl bg-white dark:bg-gray-800 border border-[#e8ede9] dark:border-gray-700 shadow-[0_1px_6px_rgba(0,0,0,0.035)] hover:shadow-md transition-all">
+                    <div className="flex items-start gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ${index % 2 === 0 ? 'bg-gradient-to-br from-[#D3AF37] to-[#b8942a]' : 'bg-gradient-to-br from-[#00674F] to-[#004c3b]'}`}>
+                        {initials}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="text-[13px] font-bold text-[#1a2e26] dark:text-gray-100 leading-none">{authorName}</div>
+                            <div className="text-[10px] text-[#8a9e94] dark:text-gray-400 mt-1">{formatRelativeTime(post.created_at)}</div>
+                          </div>
+                          <button className="text-gray-300 hover:text-[#00674F] px-1 rounded-md">•••</button>
+                        </div>
+                        <p className="text-[12px] text-[#5a6b63] dark:text-gray-300 mt-3 whitespace-pre-wrap break-words leading-relaxed">{post.content}</p>
+                        <div className="flex items-center gap-5 pt-3 mt-3 border-t border-[#eef2ef] dark:border-gray-700 text-[11px] text-gray-400">
+                          <button type="button" onClick={() => handleToggleLike(post)} className={`flex items-center gap-1.5 transition-colors ${post.liked_by_me ? 'text-[#00674F] font-bold' : 'hover:text-[#00674F]'}`}>
+                            {post.liked_by_me ? '♥' : '♡'} <span>{post.likes_count || 0}</span>
+                          </button>
+                          <button type="button" onClick={() => handleToggleComments(post.id)} className={`flex items-center gap-1.5 transition-colors ${openCommentsPostId === post.id ? 'text-[#00674F] font-bold' : 'hover:text-[#00674F]'}`}>
+                            💬 <span>{post.comments_count || 0}</span>
+                          </button>
+                        </div>
+                        {openCommentsPostId === post.id && (
+                          <div className="mt-3 pt-3 border-t border-[#eef2ef] dark:border-gray-700 space-y-3">
+                            <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                              {(postCommentsMap[post.id] || []).length === 0 ? (
+                                <p className="text-[11px] text-gray-400">Nenhum comentário ainda.</p>
+                              ) : (
+                                (postCommentsMap[post.id] || []).map(comment => (
+                                  <div key={comment.id} className="flex gap-2">
+                                    <div className="w-7 h-7 rounded-full bg-[#e8f5ef] text-[#00674F] flex items-center justify-center text-[10px] font-bold shrink-0">
+                                      {(comment.author_name || 'EU').slice(0, 2).toUpperCase()}
+                                    </div>
+                                    <div className="flex-1 bg-[#fafcfb] dark:bg-gray-900 border border-[#e8ede9] dark:border-gray-700 rounded-xl px-3 py-2">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-[11px] font-bold text-[#1a2e26] dark:text-gray-100">{comment.author_name || 'Estudante UFA'}</span>
+                                        <span className="text-[9px] text-gray-400">{formatRelativeTime(comment.created_at)}</span>
+                                      </div>
+                                      <p className="text-[11px] text-[#5a6b63] dark:text-gray-300">{comment.content}</p>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                placeholder="Escreva um comentário..."
+                                value={commentInputs[post.id] || ''}
+                                onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreateComment(post.id) } }}
+                                className="flex-1 px-3 py-2 border border-[#dde5e0] dark:border-gray-700 rounded-xl text-[11px] bg-white dark:bg-gray-800 outline-none focus:border-[#00674F]"
+                              />
+                              <button type="button" onClick={() => handleCreateComment(post.id)} className="w-9 h-9 rounded-xl bg-[#00674F] text-white flex items-center justify-center shadow-sm">
+                                <Send size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 py-2.5 border-t border-[#eef2ef] dark:border-gray-800 shrink-0">
+              <button className="text-[11px] font-bold text-[#00674F] hover:underline w-full text-center">
+                Ver todas as publicações →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ===================== FIM FEED FLUTUANTE ===================== */}
 
       {materialToDelete && (
         <div className="fixed inset-0 z-[99999] bg-black/40 flex items-center justify-center">
