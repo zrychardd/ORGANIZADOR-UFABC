@@ -14,7 +14,8 @@
     "@supabase/supabase-js": "^2.106.2",
     "@tailwindcss/postcss": "^4.3.0",
     "cheerio": "^1.2.0",
-    "lucide-react": "^1.16.0",
+    "framer-motion": "^12.42.0",
+    "lucide-react": "^1.22.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "rss-parser": "^3.13.0"
