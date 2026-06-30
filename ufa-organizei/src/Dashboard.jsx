@@ -5,7 +5,8 @@ import {
   ListTodo, Home, Megaphone, LayoutGrid, BarChart, Settings,
   ChevronLeft, ChevronDown, Check, Bell, Award, Flame, MapPin,
   Clock, Camera, ToggleRight, Search, Send, SlidersHorizontal,
-  X, ArrowDown, Minus, ArrowUp, BookOpen, User, Briefcase, Moon, Sun
+  X, ArrowDown, Minus, ArrowUp, BookOpen, User, Briefcase, Moon, Sun,
+  Lock, Monitor, Info, KeyRound, ShieldCheck, AlertTriangle
 } from 'lucide-react'
 
 
@@ -214,6 +215,23 @@ export default function Dashboard({ session, isDark, toggleDark }) {
   const [configSubTab, setConfigSubTab] = useState('Perfil')
   const [loading, setLoading] = useState(false)
 
+  // Modal de notificação (substitui alert() nativo do navegador)
+  const [notification, setNotification] = useState({ open: false, type: 'success', title: '', message: '' })
+  const showNotification = (message, type = 'success', title = '') => {
+    setNotification({
+      open: true,
+      type,
+      title: title || (type === 'success' ? 'Sucesso!' : type === 'error' ? 'Ops, algo deu errado' : 'Aviso'),
+      message
+    })
+  }
+  const closeNotification = () => setNotification(prev => ({ ...prev, open: false }))
+
+  // Preferências da conta (UI local, não persistidas no banco)
+  const [prefEmailNotifications, setPrefEmailNotifications] = useState(true)
+  const [prefTaskReminders, setPrefTaskReminders] = useState(true)
+  const [prefWeeklySummary, setPrefWeeklySummary] = useState(true)
+
   const avatarInitials = headerDisplayName.slice(0, 2).toUpperCase()
 
   useEffect(() => {
@@ -301,15 +319,15 @@ export default function Dashboard({ session, isDark, toggleDark }) {
           email: draftEmail.trim()
         })
         if (authError) throw authError
-        alert('Confirmação enviada! Acesse o seu novo e-mail para validar a alteração do seu login oficial.')
+        showNotification('Acesse o seu novo e-mail para validar a alteração do seu login oficial.', 'info', 'Confirmação enviada!')
       }
 
       setHeaderDisplayName(draftDisplayName)
       setHeaderEmail(draftEmail)
 
-      alert('Alterações salvas com sucesso e guardadas no aluno!')
+      showNotification('Alterações salvas com sucesso e guardadas no aluno!', 'success')
     } catch (error) {
-      alert('Erro ao salvar: ' + error.message)
+      showNotification('Erro ao salvar: ' + error.message, 'error')
     } finally {
       setLoading(false)
     }
@@ -322,7 +340,7 @@ export default function Dashboard({ session, isDark, toggleDark }) {
       .createSignedUrl(material.storage_path, 60)
 
     if (error) {
-      alert('Erro ao gerar link do arquivo.')
+      showNotification('Erro ao gerar link do arquivo.', 'error')
       return
     }
 
@@ -349,7 +367,7 @@ export default function Dashboard({ session, isDark, toggleDark }) {
       .eq('id', material.id)
 
     if (error) {
-      alert('Erro ao excluir material.')
+      showNotification('Erro ao excluir material.', 'error')
     } else {
       fetchMaterials()
     }
@@ -500,7 +518,7 @@ export default function Dashboard({ session, isDark, toggleDark }) {
       setShowTaskModal(false)
       fetchTasks()
     } catch (err) {
-      alert('Erro ao criar tarefa: ' + err.message)
+      showNotification('Erro ao criar tarefa: ' + err.message, 'error')
     }
     setLoading(false)
   }
@@ -662,7 +680,7 @@ export default function Dashboard({ session, isDark, toggleDark }) {
       fetchPosts()
     } else {
       console.error('Erro ao criar post:', error.message)
-      alert('Não foi possível publicar no feed. Confira as policies da tabela posts no Supabase.')
+      showNotification('Não foi possível publicar no feed. Confira as policies da tabela posts no Supabase.', 'error')
     }
   }
 
@@ -2084,39 +2102,195 @@ export default function Dashboard({ session, isDark, toggleDark }) {
             {/* ABA CONFIGURAÇÕES */}
             {activeTab === 'configuracoes' && (
               <div className="space-y-4 animate-fade-in">
-                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-[#e4e9e6] dark:border-gray-800 p-6 flex flex-col shadow-sm">
-                  <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100 mb-4">Informações do perfil</h3>
-                  <form onSubmit={handleSaveSettings} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-[10px] font-bold text-gray-400 block mb-1">Nome completo</label>
-                        <input type="text" value={draftFullName} onChange={(e) => setDraftFullName(e.target.value)} className="w-full px-3.5 py-2 border rounded-xl text-xs bg-[#fafcfb] dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none focus:border-[#00674F]" />
+
+                {/* Cabeçalho da página */}
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="w-11 h-11 rounded-2xl bg-[#e8f5ef] dark:bg-[#0f2c22] flex items-center justify-center shrink-0">
+                    <Settings size={20} className="text-[#00674F]" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-[#1a2e26] dark:text-gray-100 leading-none">Perfil / Configurações</h2>
+                    <p className="text-[12px] text-[#8a9e94] dark:text-gray-400 mt-1">Gerencie suas informações pessoais e preferências da conta.</p>
+                  </div>
+                </div>
+
+                {/* Layout principal: duas colunas */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+
+                  {/* ===== COLUNA ESQUERDA: Informações do perfil ===== */}
+                  <div className="bg-white dark:bg-gray-900 rounded-2xl border border-[#e4e9e6] dark:border-gray-800 p-6 flex flex-col shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+                    <div className="flex items-center gap-2.5 mb-1">
+                      <div className="w-9 h-9 rounded-xl bg-[#e8f5ef] dark:bg-[#0f2c22] flex items-center justify-center shrink-0">
+                        <User size={16} className="text-[#00674F]" />
                       </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-gray-400 block mb-1">Nome de exibição</label>
-                        <input type="text" value={draftDisplayName} onChange={(e) => setDraftDisplayName(e.target.value)} className="w-full px-3.5 py-2 border rounded-xl text-xs bg-[#fafcfb] dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none focus:border-[#00674F]" />
+                      <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100">Informações do perfil</h3>
+                    </div>
+                    <p className="text-[11px] text-[#8a9e94] dark:text-gray-400 mb-5 ml-[46px]">Atualize seus dados pessoais e informações acadêmicas.</p>
+
+                    {/* Avatar */}
+                    <div className="flex flex-col items-center mb-6">
+                      <div className="relative">
+                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#D3AF37] to-[#a88620] flex items-center justify-center text-2xl font-bold text-white shadow-sm">
+                          {avatarInitials}
+                        </div>
+                        <button type="button" className="absolute right-0 bottom-0 w-7 h-7 bg-[#00674F] text-white rounded-full flex items-center justify-center border-[3px] border-white dark:border-gray-900 shadow-sm hover:bg-[#004c3b] transition-colors" title="Alterar foto">
+                          <Camera size={12} />
+                        </button>
                       </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-gray-400 block mb-1">E-mail</label>
-                        <input type="email" value={draftEmail} onChange={(e) => setDraftEmail(e.target.value)} className="w-full px-3.5 py-2 border rounded-xl text-xs bg-[#fafcfb] dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none focus:border-[#00674F]" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
+                    </div>
+
+                    <form onSubmit={handleSaveSettings} className="space-y-4 flex-1 flex flex-col">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-400 block mb-1">Nome completo</label>
+                          <input type="text" value={draftFullName} onChange={(e) => setDraftFullName(e.target.value)} className="w-full px-3.5 py-2 border border-[#e4e9e6] dark:border-gray-700 rounded-xl text-xs bg-[#fafcfb] dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none focus:border-[#00674F]" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-400 block mb-1">Nome de exibição</label>
+                          <input type="text" value={draftDisplayName} onChange={(e) => setDraftDisplayName(e.target.value)} className="w-full px-3.5 py-2 border border-[#e4e9e6] dark:border-gray-700 rounded-xl text-xs bg-[#fafcfb] dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none focus:border-[#00674F]" />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="text-[10px] font-bold text-gray-400 block mb-1">E-mail</label>
+                          <input type="email" value={draftEmail} onChange={(e) => setDraftEmail(e.target.value)} className="w-full px-3.5 py-2 border border-[#e4e9e6] dark:border-gray-700 rounded-xl text-xs bg-[#fafcfb] dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none focus:border-[#00674F]" />
+                        </div>
                         <div>
                           <label className="text-[10px] font-bold text-gray-400 block mb-1">Curso</label>
-                          <input type="text" value={draftCourse} onChange={(e) => setDraftCourse(e.target.value)} className="w-full px-3.5 py-2 border rounded-xl text-xs bg-[#fafcfb] dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none focus:border-[#00674F]" />
+                          <input type="text" value={draftCourse} onChange={(e) => setDraftCourse(e.target.value)} className="w-full px-3.5 py-2 border border-[#e4e9e6] dark:border-gray-700 rounded-xl text-xs bg-[#fafcfb] dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none focus:border-[#00674F]" />
                         </div>
                         <div>
                           <label className="text-[10px] font-bold text-gray-400 block mb-1">Ingresso</label>
-                          <input type="text" value={draftYear} onChange={(e) => setDraftYear(e.target.value)} className="w-full px-3.5 py-2 border rounded-xl text-xs bg-[#fafcfb] dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none focus:border-[#00674F]" />
+                          <input type="text" value={draftYear} onChange={(e) => setDraftYear(e.target.value)} className="w-full px-3.5 py-2 border border-[#e4e9e6] dark:border-gray-700 rounded-xl text-xs bg-[#fafcfb] dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none focus:border-[#00674F]" />
+                        </div>
+                      </div>
+                      <div className="flex justify-end pt-3 mt-auto">
+                        <button type="submit" disabled={loading} className="bg-[#00674F] hover:bg-[#005240] text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-sm transition-colors disabled:opacity-60">
+                          {loading ? 'Salvando...' : 'Salvar alterações'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+
+                  {/* ===== COLUNA DIREITA ===== */}
+                  <div className="flex flex-col gap-4">
+
+                    {/* Preferências */}
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-[#e4e9e6] dark:border-gray-800 p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+                      <div className="flex items-center gap-2.5 mb-1">
+                        <div className="w-9 h-9 rounded-xl bg-[#e8f5ef] dark:bg-[#0f2c22] flex items-center justify-center shrink-0">
+                          <Bell size={16} className="text-[#00674F]" />
+                        </div>
+                        <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100">Preferências</h3>
+                      </div>
+                      <p className="text-[11px] text-[#8a9e94] dark:text-gray-400 mb-4 ml-[46px]">Personalize sua experiência na plataforma.</p>
+
+                      <div className="space-y-1">
+                        {[
+                          { icon: Bell, title: 'Notificações por e-mail', desc: 'Receba notificações sobre tarefas e eventos.', value: prefEmailNotifications, setter: setPrefEmailNotifications },
+                          { icon: Bell, title: 'Lembretes de tarefas', desc: 'Receba lembretes diários das suas tarefas.', value: prefTaskReminders, setter: setPrefTaskReminders },
+                          { icon: BarChart, title: 'Resumo semanal', desc: 'Receba um resumo semanal das suas atividades.', value: prefWeeklySummary, setter: setPrefWeeklySummary },
+                        ].map((item, idx) => (
+                          <div key={idx} className="flex items-center gap-3 py-2.5 border-b border-[#eef2ef] dark:border-gray-800 last:border-b-0">
+                            <div className="w-8 h-8 rounded-lg bg-[#fafcfb] dark:bg-gray-800 flex items-center justify-center shrink-0">
+                              <item.icon size={14} className="text-[#00674F]" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[12px] font-bold text-gray-700 dark:text-gray-200">{item.title}</div>
+                              <div className="text-[11px] text-[#8a9e94] dark:text-gray-400">{item.desc}</div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => item.setter(!item.value)}
+                              className={`shrink-0 w-10 h-[22px] rounded-full transition-colors relative ${item.value ? 'bg-[#00674F]' : 'bg-gray-300 dark:bg-gray-700'}`}
+                            >
+                              <span className={`absolute top-[2px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-all ${item.value ? 'left-[20px]' : 'left-[2px]'}`} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Segurança */}
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-[#e4e9e6] dark:border-gray-800 p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+                      <div className="flex items-center gap-2.5 mb-1">
+                        <div className="w-9 h-9 rounded-xl bg-[#e8f5ef] dark:bg-[#0f2c22] flex items-center justify-center shrink-0">
+                          <Lock size={16} className="text-[#00674F]" />
+                        </div>
+                        <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100">Segurança</h3>
+                      </div>
+                      <p className="text-[11px] text-[#8a9e94] dark:text-gray-400 mb-4 ml-[46px]">Gerencie sua senha e a segurança da sua conta.</p>
+
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-3 py-2.5 border-b border-[#eef2ef] dark:border-gray-800">
+                          <div className="w-8 h-8 rounded-lg bg-[#fafcfb] dark:bg-gray-800 flex items-center justify-center shrink-0">
+                            <KeyRound size={14} className="text-[#00674F]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[12px] font-bold text-gray-700 dark:text-gray-200">Senha atual</div>
+                            <div className="text-[11px] text-[#8a9e94] dark:text-gray-400">••••••••</div>
+                          </div>
+                          <button type="button" className="shrink-0 text-[11px] font-bold border border-[#e4e9e6] dark:border-gray-700 text-gray-600 dark:text-gray-300 px-3.5 py-1.5 rounded-lg hover:bg-[#fafcfb] dark:hover:bg-gray-800 transition-colors">
+                            Alterar senha
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-3 py-2.5 border-b border-[#eef2ef] dark:border-gray-800">
+                          <div className="w-8 h-8 rounded-lg bg-[#fafcfb] dark:bg-gray-800 flex items-center justify-center shrink-0">
+                            <Monitor size={14} className="text-[#00674F]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[12px] font-bold text-gray-700 dark:text-gray-200">Sessões ativas</div>
+                            <div className="text-[11px] text-[#8a9e94] dark:text-gray-400">Gerencie os dispositivos conectados à sua conta.</div>
+                          </div>
+                          <button type="button" className="shrink-0 text-[11px] font-bold border border-[#e4e9e6] dark:border-gray-700 text-gray-600 dark:text-gray-300 px-3.5 py-1.5 rounded-lg hover:bg-[#fafcfb] dark:hover:bg-gray-800 transition-colors">
+                            Gerenciar
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-3 py-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950/30 flex items-center justify-center shrink-0">
+                            <Trash2 size={14} className="text-red-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[12px] font-bold text-gray-700 dark:text-gray-200">Excluir conta</div>
+                            <div className="text-[11px] text-[#8a9e94] dark:text-gray-400">Excluir permanentemente sua conta e todos os dados.</div>
+                          </div>
+                          <button type="button" className="shrink-0 text-[11px] font-bold bg-red-500 hover:bg-red-600 text-white px-3.5 py-1.5 rounded-lg shadow-sm transition-colors">
+                            Excluir conta
+                          </button>
                         </div>
                       </div>
                     </div>
-                    <div className="flex justify-end pt-2 border-t">
-                      <button type="submit" disabled={loading} className="bg-[#00674F] text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-sm">
-                        {loading ? 'Salvando...' : 'Salvar alterações'}
-                      </button>
+                  </div>
+                </div>
+
+                {/* Rodapé: Sobre a plataforma */}
+                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-[#e4e9e6] dark:border-gray-800 p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-0">
+                  <div className="flex items-center gap-2.5 sm:w-1/3">
+                    <div className="w-9 h-9 rounded-xl bg-[#e8f5ef] dark:bg-[#0f2c22] flex items-center justify-center shrink-0">
+                      <Info size={16} className="text-[#00674F]" />
                     </div>
-                  </form>
+                    <div>
+                      <div className="text-[12px] font-bold text-gray-700 dark:text-gray-200">Sobre a plataforma</div>
+                      <div className="text-[11px] text-[#8a9e94] dark:text-gray-400">Informações sobre o UFA Organizei.</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:flex-1 sm:px-6">
+                    <div>
+                      <div className="text-[10px] font-bold text-gray-400">Versão</div>
+                      <div className="text-[12px] text-gray-700 dark:text-gray-200">1.0.0</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold text-gray-400">Desenvolvido por</div>
+                      <div className="text-[12px] text-gray-700 dark:text-gray-200">UFA Organizei</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold text-gray-400">Suporte</div>
+                      <div className="text-[12px] text-gray-700 dark:text-gray-200">rychardeduardos@gmail.com</div>
+                    </div>
+                  </div>
+                  <button type="button" className="shrink-0 text-[11px] font-bold border border-[#e4e9e6] dark:border-gray-700 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-lg hover:bg-[#fafcfb] dark:hover:bg-gray-800 transition-colors sm:ml-auto">
+                    Ver termos de uso
+                  </button>
                 </div>
               </div>
             )}
@@ -2269,9 +2443,7 @@ export default function Dashboard({ session, isDark, toggleDark }) {
 
             {/* Footer */}
             <div className="px-4 py-2.5 border-t border-[#eef2ef] dark:border-gray-800 shrink-0">
-              <button className="text-[11px] font-bold text-[#00674F] hover:underline w-full text-center">
-                Ver todas as publicações →
-              </button>
+
             </div>
           </div>
         </div>
@@ -2567,6 +2739,42 @@ export default function Dashboard({ session, isDark, toggleDark }) {
                 <button type="submit" className="px-4 py-2 bg-[#00674F] text-white rounded-xl text-xs font-bold">Salvar evento</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE NOTIFICAÇÃO (substitui alert() nativo) */}
+      {notification.open && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100000] p-4"
+          style={{ animation: 'fadeIn 0.18s ease' }}
+          onClick={closeNotification}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-gray-900 rounded-2xl max-w-sm w-full p-6 shadow-xl border border-gray-100 dark:border-gray-800"
+            style={{ animation: 'slideUpModal 0.22s cubic-bezier(0.34,1.56,0.64,1)' }}
+          >
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center border ${notification.type === 'success' ? 'bg-[#e8f5ef] border-[#bfe3d3]' :
+                notification.type === 'error' ? 'bg-red-50 border-red-100' :
+                  'bg-[#fdf5e0] border-[#f2e2b0]'
+                }`}>
+                {notification.type === 'success' && <Check size={22} className="text-[#00674F]" />}
+                {notification.type === 'error' && <AlertTriangle size={22} className="text-red-500" />}
+                {notification.type === 'info' && <Info size={22} className="text-[#D3AF37]" />}
+              </div>
+              <div>
+                <h3 className="text-[15px] font-bold text-[#1a2e26] dark:text-gray-100">{notification.title}</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">{notification.message}</p>
+              </div>
+              <button
+                onClick={closeNotification}
+                className="w-full px-4 py-2.5 text-xs font-bold rounded-xl bg-[#00674F] hover:bg-[#005240] text-white transition-colors mt-1"
+              >
+                OK
+              </button>
+            </div>
           </div>
         </div>
       )}
